@@ -1,0 +1,28 @@
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE / SO (mantenha .vscode/ se quiser compartilhar interpretador)
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Flet (cache/local)
+.flet/
+
+# Opcional: descomente se não quiser versionar dados de teste
+# Data.xlsx

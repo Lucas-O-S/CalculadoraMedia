@@ -1,22 +1,18 @@
 """
-Ponto de entrada: cria View, Controller e inicia a aplicação.
+Ponto de entrada: inicia a aplicação Flet.
 """
-import sys
+import flet as ft
+
+from view_flet import ViewFlet
+from controller import Controller
 
 
-def main():
-    try:
-        from view import View
-        from controller import Controller
-        view = View()
-        controller = Controller(view)
-        view.set_controller(controller)
-        view.run()
-    except Exception as e:
-        print("Erro ao abrir a aplicação:", file=sys.stderr)
-        print(e, file=sys.stderr)
-        raise
+def main(page: ft.Page):
+    view = ViewFlet(page)
+    controller = Controller(view)
+    view.set_on_carregar(controller.on_carregar)
+    page.update()
 
 
 if __name__ == "__main__":
-    main()
+    ft.app(target=main)
