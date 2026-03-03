@@ -10,6 +10,7 @@ class ViewFlet:
     def __init__(self, page: ft.Page):
         self.page = page
         self._on_carregar_callback = None
+        self.controller = None  # referência ao controller (definida em set_controller)
 
         page.title = "Calculadora de Média - CSV/XLSX"
         page.theme_mode = ft.ThemeMode.LIGHT
@@ -19,7 +20,7 @@ class ViewFlet:
 
         # Estado dos controles
         self._filepath_ref = ft.Ref[ft.Text]()
-        self._cb_header = ft.Checkbox(label="Tem header", value=False, on_change=self._on_header_changed)
+        self._cb_header = ft.Checkbox(label="Tem Cabeçalho", value=False, on_change=self._on_header_changed)
         self._field_name = ft.Ref[ft.TextField]()
         self._field_row = ft.Ref[ft.Row]()
         self._data_table = ft.Ref[ft.DataTable]()
@@ -119,6 +120,7 @@ class ViewFlet:
         if self._field_row.current:
             self._field_row.current.visible = self._cb_header.value
             self.page.update()
+        self.controller.set_headers(self._cb_header.value)
 
     def _on_carregar_click(self, e):
         if self._on_carregar_callback:
@@ -127,6 +129,10 @@ class ViewFlet:
             self.show_erro("Conecte o backend: view.set_on_carregar(sua_funcao)")
 
     # ---------- API para você conectar o backend ----------
+
+    def set_controller(self, controller):
+        """Guarda referência ao controller para acessar variáveis e métodos: self.controller.xxx"""
+        self.controller = controller
 
     def set_on_carregar(self, callback):
         """Chamado quando o usuário clica em 'Carregar e calcular'. callback() sem argumentos."""

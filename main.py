@@ -10,6 +10,7 @@ from controller import Controller
 def main(page: ft.Page):
     view = ViewFlet(page)
     controller = Controller(view)
+    view.set_controller(controller)  # view.controller acessa o controller
     view.set_on_carregar(controller.on_carregar)
     page.update()
 
