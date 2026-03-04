@@ -58,6 +58,6 @@ class Controller:
         return self.database
     
     def calculate_statistics(self):
-        print(f"calculate_statistics: {self.database}, {self.columns}, {self.headers}")
-        self.helper.calculate_statistics(self.database, self.columns, self.headers)
+
+        allData = self.helper.calculate_statistics(self.database, self.columns, self.headers)
         
