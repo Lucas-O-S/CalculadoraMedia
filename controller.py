@@ -14,6 +14,8 @@ class Controller:
     
     database = None
     
+    allData = None
+    
     helper = Helper()
 
     def __init__(self, view):
@@ -58,6 +60,17 @@ class Controller:
         return self.database
     
     def calculate_statistics(self):
-
         allData = self.helper.calculate_statistics(self.database, self.columns, self.headers)
+
+        self.view.show_tabela(allData.tabela)
+
+        self.view.show_resultados({
+            "n":                    allData.tamanho,
+            "media":                allData.media,
+            "mediana":              allData.mediana,
+            "variancia":            allData.variancia,
+            "desvio_padrao":        allData.desvio_padrao,
+            "coeficiente_variacao": allData.coeficiente_de_variacao,
+        })
+
         
