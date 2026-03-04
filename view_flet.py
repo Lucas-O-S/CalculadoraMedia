@@ -48,6 +48,8 @@ class ViewFlet:
         page.fonts = {}
 
         # Refs
+        self._erro_banner        = ft.Ref[ft.Container]()
+        self._erro_texto         = ft.Ref[ft.Text]()
         self._filepath_ref       = ft.Ref[ft.Text]()
         self._cb_header          = ft.Checkbox(
             label="Arquivo tem cabeçalho",
@@ -63,6 +65,38 @@ class ViewFlet:
         self._tabela_container   = ft.Ref[ft.Container]()
 
         page.add(
+            # ── Banner de erro (oculto por padrão) ─────────────────────
+            ft.Container(
+                ref=self._erro_banner,
+                visible=False,
+                content=ft.Row(
+                    [
+                        ft.Icon(ft.Icons.ERROR_OUTLINE, color=ft.Colors.RED_700, size=22),
+                        ft.Text(
+                            "",
+                            ref=self._erro_texto,
+                            color=ft.Colors.RED_900,
+                            size=13,
+                            expand=True,
+                        ),
+                        ft.IconButton(
+                            icon=ft.Icons.CLOSE,
+                            icon_color=ft.Colors.RED_700,
+                            icon_size=18,
+                            on_click=self._on_fechar_erro,
+                            tooltip="Fechar",
+                        ),
+                    ],
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                ),
+                padding=ft.padding.symmetric(horizontal=16, vertical=12),
+                border_radius=10,
+                bgcolor=ft.Colors.RED_50,
+                border=ft.border.all(1, ft.Colors.RED_200),
+                margin=ft.margin.only(bottom=16),
+            ),
+
             # ── Cabeçalho ──────────────────────────────────────────────
             ft.Container(
                 content=ft.Row(
@@ -320,15 +354,22 @@ class ViewFlet:
             return (self._field_name.current.value or "").strip()
         return ""
 
+    def _on_fechar_erro(self, e):
+        if self._erro_banner.current:
+            self._erro_banner.current.visible = False
+            self.page.update()
+
     def show_erro(self, msg: str):
-        self.page.snack_bar = ft.SnackBar(
-            content=ft.Text(msg, color=ft.Colors.ON_ERROR_CONTAINER),
-            bgcolor=ft.Colors.ERROR_CONTAINER,
-            open=True,
-        )
+        if self._erro_texto.current:
+            self._erro_texto.current.value = msg
+        if self._erro_banner.current:
+            self._erro_banner.current.visible = True
         self.page.update()
 
     def show_tabela(self, df):
+        # sucesso: esconde qualquer erro anterior
+        if self._erro_banner.current:
+            self._erro_banner.current.visible = False
         has_data = df is not None and not df.empty
 
         # alterna placeholder ↔ tabela

@@ -8,6 +8,19 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+
+# ── Exceções específicas ───────────────────────────────────────────────────────
+
+class ColunaNaoEncontradaError(Exception):
+    """Coluna informada não existe no arquivo."""
+
+class DadosInsuficientesError(Exception):
+    """Menos de 2 valores numéricos após limpeza."""
+
+class DadosNaoNumericosError(Exception):
+    """Nenhum valor numérico encontrado na coluna."""
+
+
 class AllData:
     media = 0
     mediana = 0
@@ -28,22 +41,35 @@ class Helper:
         return None, None, {"erro": "Implemente helper.load_and_compute"}
 
     def calculate_statistics(self, df: pd.DataFrame, column_name: str, has_header: bool):
-        
+        if df is None:
+            raise ValueError("Nenhum arquivo carregado. Selecione um arquivo antes de calcular.")
+
         allData = AllData()
-        
-        tempDf = pd.DataFrame
-        
+
         if has_header and column_name:
+            if column_name not in df.columns:
+                disponiveis = ", ".join(str(c) for c in df.columns)
+                raise ColunaNaoEncontradaError(
+                    f"Coluna '{column_name}' não encontrada.\n"
+                    f"Colunas disponíveis: {disponiveis}"
+                )
             tempDf = df[column_name]
         else:
-            tempDf = df
+            tempDf = pd.Series(df.values.flatten())
 
-        tempDf = pd.Series(tempDf.values.flatten()) 
-        
-        tempDf = tempDf.sort_values() 
-               
+        tempDf = pd.to_numeric(tempDf, errors="coerce").dropna().sort_values().reset_index(drop=True)
+
+        if len(tempDf) == 0:
+            raise DadosNaoNumericosError(
+                "Nenhum valor numérico encontrado na coluna selecionada.\n"
+                "Verifique se o arquivo e a coluna estão corretos."
+            )
+        if len(tempDf) < 2:
+            raise DadosInsuficientesError(
+                "São necessários pelo menos 2 valores numéricos para calcular as estatísticas."
+            )
+
         allData.tabela = self.prepare_final_table(allData, tempDf)
-        
         return allData
     
     def prepare_final_table(self, allData: AllData, tempDf: pd.DataFrame):
