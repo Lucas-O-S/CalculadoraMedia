@@ -32,18 +32,22 @@ class Helper:
         
         allData = AllData()
         
+        tempDf = pd.DataFrame
+        
         if has_header and column_name:
             tempDf = df[column_name]
         else:
-            tempDf = df.iloc[:, 0]
+            tempDf = df
 
-        tempDf = pd.to_numeric(tempDf, errors="coerce").dropna().sort_values()
+        tempDf = pd.Series(tempDf.values.flatten()) 
         
+        tempDf = tempDf.sort_values() 
+               
         allData.tabela = self.prepare_final_table(allData, tempDf)
         
         return allData
     
-    def prepare_final_table(self, allData: AllData, tempDf: pd.Series):
+    def prepare_final_table(self, allData: AllData, tempDf: pd.DataFrame):
         
         tabela = pd.DataFrame()
         
@@ -53,11 +57,11 @@ class Helper:
         
         allData.k = k
         
-        allData.H = tempDf.max() - tempDf.min()
+        allData.H = float(tempDf.max() - tempDf.min())
         
         allData.h = math.ceil(allData.H / k)
         
-        allData.amplitude = tempDf.max() - tempDf.min()
+        allData.amplitude = allData.H
         
         allData.classes = self.create_classes(tempDf, k)
         
@@ -68,10 +72,13 @@ class Helper:
         return allData.tabela
     
     def create_classes(self, tempDf: pd.Series, k: int):
+        
         classes = []
-        start = int(tempDf.min())
-        i = 0
-        while start < tempDf.max():
+        
+        start = int(float(tempDf.min()))
+        maximo = float(tempDf.max())
+
+        while start < maximo:
             
             temp = start
             
@@ -79,6 +86,5 @@ class Helper:
             
             classes.append([temp , start])
             
-            i += 1
             
         return classes
