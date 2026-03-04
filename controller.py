@@ -54,8 +54,23 @@ class Controller:
                     sep = csv.Sniffer().sniff(sample, delimiters=",;\t|").delimiter
                 except csv.Error:
                     sep = ","
+                # Detecta automaticamente se tem cabeçalho quando usuário não marcou
+                if not self.headers:
+                    has_header_detected = csv.Sniffer().has_header(sample)
+                    if has_header_detected:
+                        self.headers = True
+                        self.view.notify_header_detected()
+                        header = 0
                 self.database = pd.read_csv(database, header=header, sep=sep)
             else:
+                # Para xlsx, verifica se a primeira linha é texto (cabeçalho)
+                df_raw = pd.read_excel(database, header=None, engine="openpyxl")
+                if not self.headers:
+                    first_row = df_raw.iloc[0]
+                    if all(isinstance(v, str) for v in first_row):
+                        self.headers = True
+                        self.view.notify_header_detected()
+                        header = 0
                 self.database = pd.read_excel(database, header=header, engine="openpyxl")
 
         except FileNotFoundError:
@@ -70,6 +85,12 @@ class Controller:
     def get_database(self) -> pd.DataFrame:
         print(f"get_database: {self.database}")
         return self.database
+
+    def reset(self):
+        self.database = None
+        self.columns  = ""
+        self.headers  = False
+        self.allData  = None
     
     def calculate_statistics(self):
         try:

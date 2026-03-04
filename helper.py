@@ -46,15 +46,35 @@ class Helper:
 
         allData = AllData()
 
-        if has_header and column_name:
-            if column_name not in df.columns:
+        num_colunas = len(df.columns)
+
+        if has_header:
+            # Arquivo tem cabeçalho: exige nome da coluna quando há mais de uma
+            if num_colunas > 1 and not column_name:
                 disponiveis = ", ".join(str(c) for c in df.columns)
                 raise ColunaNaoEncontradaError(
-                    f"Coluna '{column_name}' não encontrada.\n"
+                    f"O arquivo tem {num_colunas} colunas. Informe o nome da coluna desejada.\n"
                     f"Colunas disponíveis: {disponiveis}"
                 )
-            tempDf = df[column_name]
+            if column_name:
+                # Busca exata primeiro, depois case-insensitive
+                if column_name in df.columns:
+                    col_real = column_name
+                else:
+                    col_lower = column_name.strip().lower()
+                    match = next((c for c in df.columns if str(c).lower() == col_lower), None)
+                    if match is None:
+                        disponiveis = ", ".join(str(c) for c in df.columns)
+                        raise ColunaNaoEncontradaError(
+                            f"Coluna '{column_name}' não encontrada.\n"
+                            f"Colunas disponíveis: {disponiveis}"
+                        )
+                    col_real = match
+                tempDf = df[col_real]
+            else:
+                tempDf = df.iloc[:, 0]
         else:
+            # Sem cabeçalho: planifica todas as colunas em uma série única
             tempDf = pd.Series(df.values.flatten())
 
         tempDf = pd.to_numeric(tempDf, errors="coerce").dropna().sort_values().reset_index(drop=True)
@@ -72,169 +92,96 @@ class Helper:
         allData.tabela = self.prepare_final_table(allData, tempDf)
         return allData
     
-    def prepare_final_table(self, allData: AllData, tempDf: pd.DataFrame):
-        
-        tabela = pd.DataFrame()
-        
+    def prepare_final_table(self, allData: AllData, tempDf: pd.Series):
+
         allData.tamanho = len(tempDf)
-        
+
         k = int(np.ceil(np.sqrt(allData.tamanho)))
-        
         allData.k = k
-        
         allData.H = float(tempDf.max() - tempDf.min())
-        
         allData.h = math.ceil(allData.H / k)
-        
+
+        # classes usam k como passo (igual ao notebook original)
         allData.classes = self.create_classes(tempDf, k)
-        
+
         allData.tabela = pd.DataFrame(allData.classes, columns=['min', 'max'])
-        
+
         frequency = self.frequency_distribution(allData.tabela, tempDf)
-        
         allData.tabela['fi'] = frequency
-        
+
         allData.tabela['Xm'] = self.point_mean(allData.tabela)
-        
         allData.tabela['fa'] = self.calculate_fa(allData.tabela)
-        
-        allData.media = self.calculate_media(allData.tabela, allData.tamanho)
-        
-        allData.mediana = self.calculate_median(allData.tabela, allData.tabela['fa'].values, allData.h, allData.tamanho)
-        
-        allData.variancia = self.calculate_variance(allData.tabela, allData.media, allData.tamanho)
-        
-        print(allData.tabela)
-        
-        allData.desvio_padrao = self.calculate_standard_deviation(allData.variancia)
-        
+
+        allData.media             = self.calculate_media(allData.tabela, allData.tamanho)
+        allData.mediana           = self.calculate_median(allData.tabela, allData.tabela['fa'].values, allData.h, allData.tamanho)
+        allData.variancia         = self.calculate_variance(allData.tabela, allData.media, allData.tamanho)
+        allData.desvio_padrao     = self.calculate_standard_deviation(allData.variancia)
         allData.coeficiente_de_variacao = self.calculate_coefficient_of_variation(allData.desvio_padrao, allData.media)
-        
+
         return allData.tabela
-    
+
     def create_classes(self, tempDf: pd.Series, k: int):
-        
+        """Intervalos com passo k (igual ao notebook original)."""
         classes = []
-        
-        start = int(float(tempDf.min()))
+        start  = int(float(tempDf.min()))
         maximo = float(tempDf.max())
-
         while start < maximo:
-            
-            temp = start
-            
-            start = start + k
-            
-            classes.append([temp , start])
-            
-            
+            classes.append([start, start + k])
+            start += k
         return classes
-    
+
     def frequency_distribution(self, tabela: pd.DataFrame, dados: pd.Series):
-        
         bins = list(tabela['min']) + [tabela['max'].iloc[-1]]
-
         fi = pd.cut(dados, bins=bins, right=False)
-
-        frequency = fi.value_counts().sort_index()
-        print(frequency.values)
+        frequency = fi.value_counts().sort_index().reindex(fi.cat.categories, fill_value=0)
         return frequency.values
-    
+
     def point_mean(self, tabela: pd.DataFrame):
-        
-        xm = pd.DataFrame()
-        
-        xm['Xm'] = (tabela['min'] + tabela['max'] - 1) / 2
-        
-        xm.loc[xm.index[-1], 'Xm'] = (tabela['min'].iloc[-1] + tabela['max'].iloc[-1]) / 2
-        
-        print(xm)
-        
+        """Xm = (min + max - 1) / 2, exceto última classe: (min + max) / 2."""
+        xm = (tabela['min'] + tabela['max'] - 1) / 2
+        xm.iloc[-1] = (tabela['min'].iloc[-1] + tabela['max'].iloc[-1]) / 2
         return xm.values
-    
+
     def calculate_fa(self, tabela: pd.DataFrame):
-        
-        fa = []
-        fa_acumulada = 0
-        for i in range(len(tabela)):
-            fa_acumulada += tabela['fi'].iloc[i]
-            fa.append(fa_acumulada)
-        
-        
-        return fa
-    
+        return tabela['fi'].cumsum().tolist()
+
     def calculate_media(self, tabela: pd.DataFrame, n: int):
-        
-        media = 0
-        
+        media = 0.0
         for i in range(len(tabela)):
             media += tabela['Xm'].iloc[i] * tabela['fi'].iloc[i]
-            
         media = media / n
-        
         print("media:", media)
-        
-        return media
-    
-    def calculate_median(self, tabela: pd.DataFrame, frequenciaAcumulada: list, h: float, n: int):
-        
-        mediana = 0
-        
-        posicao = 0
-        
-        if n % 2 == 0:
-            posicao = ((n/2) + (n/2 + 1)) / 2
-        
-        else:
-            posicao = (n+1)/2
-            
+        return float(media)
+
+    def calculate_median(self, tabela: pd.DataFrame, frequenciaAcumulada, h: float, n: int):
+        posicao = ((n / 2) + (n / 2 + 1)) / 2 if n % 2 == 0 else (n + 1) / 2
         for i in range(len(frequenciaAcumulada)):
-            
             if frequenciaAcumulada[i] >= posicao:
-              
-                classeMediana = tabela['min'].iloc[i]
-              
-                frequenciaAnterior = frequenciaAcumulada[i-1] if i > 0 else 0
-              
-                fi = tabela['fi'].iloc[i]
-              
-                limiteInferior = tabela['min'].iloc[i]
-              
-                break
-            
-        mediana = limiteInferior + ((posicao - frequenciaAnterior) / fi) * h
-            
-        print("mediana:", mediana)
-        
-        return mediana
-    
+                limiteInferior    = float(tabela['min'].iloc[i])
+                frequenciaAnterior = float(frequenciaAcumulada[i - 1]) if i > 0 else 0.0
+                fi                = float(tabela['fi'].iloc[i])
+                mediana = limiteInferior + ((posicao - frequenciaAnterior) / fi) * h
+                print("mediana:", mediana)
+                return mediana
+        return 0.0
+
     def calculate_variance(self, tabela: pd.DataFrame, media: float, n: int):
-        
-        variance = 0
-        
+        """Variância sem ponderação por fi: Σ(Xm - média)² / n (igual ao notebook)."""
+        variance = 0.0
         for i in range(len(tabela)):
             variance += (tabela['Xm'].iloc[i] - media) ** 2
-            
         variance = variance / n
-        
         print("variancia:", variance)
-        
-        return variance
-    
+        return float(variance)
+
     def calculate_standard_deviation(self, variance: float):
-        
         standard_deviation = math.sqrt(variance)
-        
         print("desvio padrao:", standard_deviation)
-        
         return standard_deviation
-    
+
     def calculate_coefficient_of_variation(self, standard_deviation: float, media: float):
-        
         coefficient_of_variation = (standard_deviation / media) * 100
-        
         print("coeficiente de variacao:", coefficient_of_variation)
-        
         return coefficient_of_variation
     
     

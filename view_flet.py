@@ -189,16 +189,32 @@ class ViewFlet:
                             wrap=True,
                         ),
                         ft.Divider(height=12, color=ft.Colors.TRANSPARENT),
-                        ft.ElevatedButton(
-                            "Calcular",
-                            icon=ft.Icons.CALCULATE_OUTLINED,
-                            on_click=self._on_carregar_click,
-                            style=ft.ButtonStyle(
-                                bgcolor=ft.Colors.GREEN_700,
-                                color=ft.Colors.WHITE,
-                                shape=ft.RoundedRectangleBorder(radius=8),
-                                padding=ft.padding.symmetric(horizontal=24, vertical=14),
-                            ),
+                        ft.Row(
+                            [
+                                ft.ElevatedButton(
+                                    "Calcular",
+                                    icon=ft.Icons.CALCULATE_OUTLINED,
+                                    on_click=self._on_carregar_click,
+                                    style=ft.ButtonStyle(
+                                        bgcolor=ft.Colors.GREEN_700,
+                                        color=ft.Colors.WHITE,
+                                        shape=ft.RoundedRectangleBorder(radius=8),
+                                        padding=ft.padding.symmetric(horizontal=24, vertical=14),
+                                    ),
+                                ),
+                                ft.OutlinedButton(
+                                    "Limpar",
+                                    icon=ft.Icons.RESTART_ALT,
+                                    on_click=self._on_reset_click,
+                                    style=ft.ButtonStyle(
+                                        color=ft.Colors.BLUE_GREY_600,
+                                        side=ft.BorderSide(1, ft.Colors.BLUE_GREY_300),
+                                        shape=ft.RoundedRectangleBorder(radius=8),
+                                        padding=ft.padding.symmetric(horizontal=20, vertical=14),
+                                    ),
+                                ),
+                            ],
+                            spacing=12,
                         ),
                     ],
                     spacing=0,
@@ -315,7 +331,13 @@ class ViewFlet:
             self._filepath_ref.current.value = path or "Nenhum arquivo selecionado"
             self._filepath_ref.current.color = ft.Colors.BLUE_GREY_800 if path else ft.Colors.BLUE_GREY_400
             self._filepath_ref.current.update()
-            self.page.update()
+        # limpa o campo de nome de coluna ao trocar de arquivo
+        if self._field_name.current:
+            self._field_name.current.value = ""
+            self._field_name.current.update()
+        if self.controller:
+            self.controller.set_column_name("")
+        self.page.update()
 
     def _on_header_changed(self, e):
         if self._field_row.current:
@@ -329,11 +351,50 @@ class ViewFlet:
         else:
             self.show_erro("Conecte o backend: view.set_on_carregar(sua_funcao)")
 
+    def _on_reset_click(self, e):
+        # Limpa arquivo
+        if self._filepath_ref.current:
+            self._filepath_ref.current.value = "Nenhum arquivo selecionado"
+            self._filepath_ref.current.color = ft.Colors.BLUE_GREY_400
+        # Limpa checkbox e campo de coluna
+        self._cb_header.value = False
+        if self._field_name.current:
+            self._field_name.current.value = ""
+        if self._field_row.current:
+            self._field_row.current.visible = False
+        # Limpa tabela (volta ao placeholder)
+        if self._tabela_placeholder.current:
+            self._tabela_placeholder.current.visible = True
+        if self._tabela_container.current:
+            self._tabela_container.current.visible = False
+        if self._data_table.current:
+            self._data_table.current.columns = [ft.DataColumn(ft.Text(""))]
+            self._data_table.current.rows = []
+        # Limpa resultados
+        if self._resultados.current:
+            self._resultados.current.controls = []
+        # Esconde banner de erro
+        if self._erro_banner.current:
+            self._erro_banner.current.visible = False
+        # Reseta controller
+        if self.controller:
+            self.controller.reset()
+        self.page.update()
+
     def _on_field_name_changed(self, e):
         if self._field_name.current:
             self.controller.set_column_name(self._field_name.current.value)
 
     # ── API pública ────────────────────────────────────────────────────
+
+    def notify_header_detected(self):
+        """Chamado pelo controller quando cabeçalho é detectado automaticamente."""
+        self._cb_header.value = True
+        self._cb_header.update()
+        if self._field_row.current:
+            self._field_row.current.visible = True
+            self._field_row.current.update()
+        self.page.update()
 
     def set_controller(self, controller):
         self.controller = controller
