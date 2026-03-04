@@ -1,5 +1,5 @@
 """
-Ponto de entrada: inicia a aplicação Flet.
+Ponto de entrada: inicia a aplicação Flet (modo nativo/desktop).
 """
 import flet as ft
 

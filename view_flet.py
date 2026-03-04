@@ -2,7 +2,12 @@
 View Flet: tela pronta para enviar e receber valores.
 Conecte seu backend em set_on_carregar(); use get_filepath(), get_has_header(), get_column_name()
 para ler; use show_tabela(), show_resultados(), show_erro() para atualizar a tela.
+Seletor de arquivo: tkinter em subprocess (funciona em Windows, macOS e Linux).
 """
+import os
+import subprocess
+import sys
+
 import flet as ft
 
 
@@ -25,8 +30,6 @@ class ViewFlet:
         self._field_row = ft.Ref[ft.Row]()
         self._data_table = ft.Ref[ft.DataTable]()
         self._resultados = ft.Ref[ft.Column]()
-
-        # Flet >=0.80: FilePicker não vai em overlay; cria-se na hora e chama pick_files().
 
         # Monta a UI
         page.add(
@@ -52,7 +55,12 @@ class ViewFlet:
                         content=ft.Row(
                             [
                                 ft.Text("Nome do campo:"),
-                                ft.TextField(ref=self._field_name, width=200, hint_text="ex.: Nota"),
+                                ft.TextField(
+                                    ref=self._field_name,
+                                    width=200,
+                                    hint_text="ex.: Nota",
+                                    on_change=self._on_field_name_changed,
+                                ),
                             ],
                             ref=self._field_row,
                             visible=False,
@@ -101,20 +109,42 @@ class ViewFlet:
             ),
         )
 
-    async def _on_select_file_click(self, e):
-        file_picker = ft.FilePicker()
-        files = await file_picker.pick_files(
-            allow_multiple=False,
-            file_type=ft.FilePickerFileType.CUSTOM,
-            allowed_extensions=["xlsx", "csv"],
-        )
-        if files and len(files) > 0:
-            f = files[0]
-            path = getattr(f, "path", None) or getattr(f, "name", "") or ""
-            if self._filepath_ref.current:
-                self._filepath_ref.current.value = path
-                self._filepath_ref.current.color = ft.Colors.ON_SURFACE
-                self.page.update()
+    def _on_select_file_click(self, e):
+        def run_dialog():
+            try:
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                helper = os.path.join(script_dir, "file_dialog_helper.py")
+                creationflags = (
+                    subprocess.CREATE_NO_WINDOW
+                    if sys.platform == "win32"
+                    else 0
+                )
+                r = subprocess.run(
+                    [sys.executable, helper],
+                    capture_output=True,
+                    text=True,
+                    cwd=script_dir,
+                    creationflags=creationflags,
+                    timeout=300,
+                )
+                path = (r.stdout or "").strip()
+            except Exception:
+                path = ""
+            self._apply_selected_path(path)
+            self.controller.set_database(path)
+
+        # run_thread roda em background; a atualização da UI a partir da thread é suportada
+        self.page.run_thread(run_dialog)
+        
+
+    def _apply_selected_path(self, path: str):
+        if self._filepath_ref.current:
+            self._filepath_ref.current.value = path or "Nenhum arquivo selecionado"
+            self._filepath_ref.current.color = (
+                ft.Colors.ON_SURFACE if path else ft.Colors.GREY_600
+            )
+            self._filepath_ref.current.update()
+            self.page.update()
 
     def _on_header_changed(self, e):
         if self._field_row.current:
@@ -124,9 +154,14 @@ class ViewFlet:
 
     def _on_carregar_click(self, e):
         if self._on_carregar_callback:
-            self._on_carregar_callback()
+            self.controller.calculate_statistics()
+            
         else:
             self.show_erro("Conecte o backend: view.set_on_carregar(sua_funcao)")
+            
+    def _on_field_name_changed(self, e):
+        if self._field_name.current:
+            self.controller.set_column_name(self._field_name.current.value)
 
     # ---------- API para você conectar o backend ----------
 
