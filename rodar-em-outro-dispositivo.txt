@@ -1,0 +1,43 @@
+CalculadoraMedia - Rodar em outro dispositivo
+=============================================
+
+1. Ter Python 3.11
+   Instale em python.org ou Microsoft Store.
+   No Windows, o comando "py -3.11" deve funcionar.
+
+2. Copiar o projeto
+   Clone o repositório ou copie a pasta do projeto.
+   Não copie a pasta .venv (ela não vai no Git e será recriada).
+
+3. Criar o ambiente e instalar dependências
+   Abra o terminal na pasta do projeto e rode:
+
+   Windows (PowerShell):
+   ---------------------
+   py -3.11 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+
+   Linux / macOS:
+   --------------
+   python3.11 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+
+4. Rodar o app
+   ------------
+   python main.py
+
+   Ou no Cursor/VS Code: abra a pasta, selecione o interpretador do .venv e execute main.py.
+
+
+Recriar o venv (se der erro)
+----------------------------
+Windows (PowerShell):
+
+   Remove-Item -Recurse -Force .venv
+   py -3.11 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+
+No Cursor/VS Code: selecione o interpretador Python 3.11 em .venv\Scripts\python.exe (Windows) ou .venv/bin/python (Linux/Mac).
