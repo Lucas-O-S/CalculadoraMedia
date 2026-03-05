@@ -32,6 +32,14 @@ class AllData:
     h = 0
     H = 0
     tamanho = 0
+    amplitude = 0
+    total_xm_fi = 0
+        
+    moda = 'Não foi possível calcular a moda'
+    totalXmFi = 0
+    totalXmMediaQuadrado = 0
+    
+    
 
 
 class Helper:
@@ -88,6 +96,8 @@ class Helper:
             raise DadosInsuficientesError(
                 "São necessários pelo menos 2 valores numéricos para calcular as estatísticas."
             )
+            
+
 
         allData.tabela = self.prepare_final_table(allData, tempDf)
         return allData
@@ -110,7 +120,15 @@ class Helper:
         allData.tabela['fi'] = frequency
 
         allData.tabela['Xm'] = self.point_mean(allData.tabela)
+        
+        allData.tabela['fi*Xm'] = allData.tabela['fi'] * allData.tabela['Xm']
+
+        allData.tabela['Fr%'] = self.calculate_Fr(allData.tabela, allData.tamanho)
+        
         allData.tabela['fa'] = self.calculate_fa(allData.tabela)
+        
+        allData.amplitude   = allData.H
+        allData.total_xm_fi = float(allData.tabela['fi*Xm'].sum())
 
         allData.media             = self.calculate_media(allData.tabela, allData.tamanho)
         allData.mediana           = self.calculate_median(allData.tabela, allData.tabela['fa'].values, allData.h, allData.tamanho)
@@ -118,6 +136,24 @@ class Helper:
         allData.desvio_padrao     = self.calculate_standard_deviation(allData.variancia)
         allData.coeficiente_de_variacao = self.calculate_coefficient_of_variation(allData.desvio_padrao, allData.media)
 
+        allData.tabela['Xm-média'] = (allData.tabela['Xm'] - allData.media).round(4)
+        allData.tabela['(Xm-média)²'] = (allData.tabela['Xm-média'] ** 2).round(4)
+        allData.totalXmMediaQuadrado = float(allData.tabela['(Xm-média)²'].sum())
+        
+        allData.tabela['Intervalo'] = allData.tabela.apply(lambda r: str(int(r['min'])) + " |---- " + str(int(r['max'])), axis=1)
+        
+        allData.tabela['Intervalo'].iloc[-1] = str(allData.tabela['min'].iloc[-1]) + " |----| " + str(allData.tabela['max'].iloc[-1])
+
+        allData.tabela.drop(columns=['min', 'max'], inplace=True)
+        
+        cols = ['Intervalo'] + [c for c in allData.tabela.columns if c != 'Intervalo']
+        
+        allData.tabela = allData.tabela[cols]
+
+        allData.moda = self.calculate_moda(allData.tabela, allData.h)
+
+
+        
         return allData.tabela
 
     def create_classes(self, tempDf: pd.Series, k: int):
@@ -184,4 +220,13 @@ class Helper:
         print("coeficiente de variacao:", coefficient_of_variation)
         return coefficient_of_variation
     
+    def calculate_Fr(self, tabela: pd.DataFrame, total: int):
+        return tabela['fi'] / total * 100
     
+    def calculate_moda(self, tabela: pd.DataFrame, h: float):
+   
+        max_fi = tabela['fi'].idxmax()
+        
+        moda = tabela['Intervalo'].iloc[max_fi]
+        
+        return moda

@@ -103,11 +103,17 @@ class Controller:
             self.view.show_tabela(allData.tabela)
             self.view.show_resultados({
                 "n":                    allData.tamanho,
+                "k":                    allData.k,
+                "h":                    allData.h,
                 "media":                allData.media,
                 "mediana":              allData.mediana,
+                "moda":                 allData.moda,
                 "variancia":            allData.variancia,
                 "desvio_padrao":        allData.desvio_padrao,
                 "coeficiente_variacao": allData.coeficiente_de_variacao,
+                "amplitude":            allData.amplitude,
+                "total_xm_fi":          allData.total_xm_fi,
+                "total_xm_media_quad":  allData.totalXmMediaQuadrado,
             })
 
         except ColunaNaoEncontradaError as exc:
