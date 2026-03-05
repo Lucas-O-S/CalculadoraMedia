@@ -254,21 +254,26 @@ class ViewFlet:
                             ref=self._tabela_container,
                             content=ft.Column(
                                 controls=[
-                                    ft.DataTable(
-                                        ref=self._data_table,
-                                        columns=[ft.DataColumn(ft.Text(""))],
-                                        rows=[],
-                                        border=ft.border.all(0),
-                                        heading_row_color=_HEADER_BG,
-                                        heading_row_height=44,
-                                        data_row_min_height=40,
-                                        data_row_max_height=40,
-                                        column_spacing=0,
-                                        divider_thickness=1,
-                                        horizontal_margin=16,
-                                    )
+                                    ft.Row(
+                                        controls=[
+                                            ft.DataTable(
+                                                ref=self._data_table,
+                                                columns=[ft.DataColumn(ft.Text(""))],
+                                                rows=[],
+                                                border=ft.border.all(0),
+                                                heading_row_color=_HEADER_BG,
+                                                heading_row_height=44,
+                                                data_row_min_height=40,
+                                                data_row_max_height=40,
+                                                column_spacing=0,
+                                                divider_thickness=1,
+                                                horizontal_margin=8,
+                                            ),
+                                        ],
+                                        scroll=ft.ScrollMode.AUTO,  # scroll horizontal
+                                    ),
                                 ],
-                                scroll=ft.ScrollMode.AUTO,
+                                scroll=ft.ScrollMode.AUTO,  # scroll vertical
                                 expand=True,
                                 spacing=0,
                             ),
@@ -443,14 +448,15 @@ class ViewFlet:
             self.page.update()
             return
 
-        cols = list(df.columns)
-        # largura de cada coluna: divide o espaço da janela igualmente
-        col_w = max(100, int((self.page.window.width or 700) - 80) // len(cols))
+        cols  = list(df.columns)
+        win_w = int(self.page.window.width or 700)
+        # largura mínima por coluna; se ultrapassar a janela o scroll horizontal entra
+        col_w = max(90, (win_w - 64) // len(cols))
 
         self._data_table.current.columns = [
             ft.DataColumn(
                 ft.Container(
-                    ft.Text(str(c), weight=ft.FontWeight.W_600, color=_PRIMARY, size=13),
+                    ft.Text(str(c), weight=ft.FontWeight.W_600, color=_PRIMARY, size=12),
                     width=col_w,
                 )
             )
@@ -461,7 +467,7 @@ class ViewFlet:
                 cells=[
                     ft.DataCell(
                         ft.Container(
-                            ft.Text(str(row[c])[:24], size=13),
+                            ft.Text(str(row[c])[:20], size=12),
                             width=col_w,
                         )
                     )
@@ -471,6 +477,9 @@ class ViewFlet:
             )
             for i, (_, row) in enumerate(df.iterrows())
         ]
+        # força atualização do container da tabela também
+        if self._tabela_container.current:
+            self._tabela_container.current.update()
         self.page.update()
 
     def show_resultados(self, stats: dict):
@@ -501,19 +510,41 @@ class ViewFlet:
                 expand=True,
             )
 
-        n   = stats.get("n", 0)
-        med = stats.get("media", 0)
-        mdn = stats.get("mediana", 0)
-        var = stats.get("variancia", 0)
-        dp  = stats.get("desvio_padrao", 0)
-        cv  = stats.get("coeficiente_variacao", 0)
+        n        = stats.get("n", 0)
+        k        = stats.get("k", 0)
+        h        = stats.get("h", 0)
+        med      = stats.get("media", 0)
+        mdn      = stats.get("mediana", 0)
+        moda     = stats.get("moda", 0)
+        var      = stats.get("variancia", 0)
+        dp       = stats.get("desvio_padrao", 0)
+        cv       = stats.get("coeficiente_variacao", 0)
+        amp      = stats.get("amplitude", 0)
+        txmfi    = stats.get("total_xm_fi", 0)
+        txmmq    = stats.get("total_xm_media_quad", 0)
 
         self._resultados.current.controls = [
             ft.Row(
                 [
                     _stat_card("n  (total)", str(n)),
+                    _stat_card("k  (nº de classes)", str(k)),
+                    _stat_card("h  (intervalo de classe)", str(h)),
+                    _stat_card("Amplitude (H)", f"{amp:.4f}"),
+                ],
+                spacing=10,
+            ),
+            ft.Row(
+                [
+                    _stat_card("Σ(fi × Xm)", f"{txmfi:.4f}"),
+                    _stat_card("Σ(Xm − média)²", f"{txmmq:.4f}"),
+                ],
+                spacing=10,
+            ),
+            ft.Row(
+                [
                     _stat_card("Média", f"{med:.4f}"),
                     _stat_card("Mediana", f"{mdn:.4f}"),
+                    _stat_card("Moda", moda),
                 ],
                 spacing=10,
             ),
