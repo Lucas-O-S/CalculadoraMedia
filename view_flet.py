@@ -45,6 +45,7 @@ class ViewFlet:
         page.window.min_width = 680
         page.window.min_height = 520
         page.scroll = ft.ScrollMode.AUTO
+        page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
         page.fonts = {}
 
         # Refs
@@ -59,7 +60,7 @@ class ViewFlet:
         )
         self._field_name         = ft.Ref[ft.TextField]()
         self._field_row          = ft.Ref[ft.Row]()
-        self._data_table         = ft.Ref[ft.DataTable]()
+        self._data_table         = ft.Ref[ft.Column]()
         self._resultados         = ft.Ref[ft.Column]()
         self._tabela_placeholder = ft.Ref[ft.Container]()
         self._tabela_container   = ft.Ref[ft.Container]()
@@ -224,8 +225,8 @@ class ViewFlet:
             ft.Container(height=20),
 
             # ── Seção: Tabela de frequência ────────────────────────────
-            _card(
-                ft.Column(
+            ft.Container(
+                content=ft.Column(
                     [
                         _section_title("Tabela de frequência"),
                         ft.Divider(height=12, color=ft.Colors.TRANSPARENT),
@@ -253,31 +254,12 @@ class ViewFlet:
                         ft.Container(
                             ref=self._tabela_container,
                             content=ft.Column(
-                                controls=[
-                                    ft.Row(
-                                        controls=[
-                                            ft.DataTable(
-                                                ref=self._data_table,
-                                                columns=[ft.DataColumn(ft.Text(""))],
-                                                rows=[],
-                                                border=ft.border.all(0),
-                                                heading_row_color=_HEADER_BG,
-                                                heading_row_height=44,
-                                                data_row_min_height=40,
-                                                data_row_max_height=40,
-                                                column_spacing=0,
-                                                divider_thickness=1,
-                                                horizontal_margin=8,
-                                            ),
-                                        ],
-                                        scroll=ft.ScrollMode.AUTO,  # scroll horizontal
-                                    ),
-                                ],
-                                scroll=ft.ScrollMode.AUTO,  # scroll vertical
-                                expand=True,
+                                ref=self._data_table,
+                                controls=[],
+                                scroll=ft.ScrollMode.AUTO,
                                 spacing=0,
+                                expand=True,
                             ),
-                            height=300,
                             border_radius=8,
                             border=ft.border.all(1, _OUTLINE),
                             clip_behavior=ft.ClipBehavior.HARD_EDGE,
@@ -286,7 +268,14 @@ class ViewFlet:
                         ),
                     ],
                     spacing=0,
+                    expand=True,
                 ),
+                padding=16,
+                border_radius=12,
+                border=ft.border.all(1, _OUTLINE),
+                bgcolor=_SURFACE,
+                shadow=ft.BoxShadow(blur_radius=6, color=ft.Colors.with_opacity(0.06, ft.Colors.BLACK)),
+                expand=True,
             ),
 
             ft.Container(height=20),
@@ -448,38 +437,43 @@ class ViewFlet:
             self.page.update()
             return
 
-        cols  = list(df.columns)
-        win_w = int(self.page.window.width or 700)
-        # largura mínima por coluna; se ultrapassar a janela o scroll horizontal entra
-        col_w = max(90, (win_w - 64) // len(cols))
+        cols = list(df.columns)
 
-        self._data_table.current.columns = [
-            ft.DataColumn(
-                ft.Container(
-                    ft.Text(str(c), weight=ft.FontWeight.W_600, color=_PRIMARY, size=12),
-                    width=col_w,
-                )
+        def _cell(text: str, is_header: bool = False, zebra: bool = False) -> ft.Container:
+            return ft.Container(
+                content=ft.Text(
+                    text,
+                    size=12,
+                    weight=ft.FontWeight.W_600 if is_header else ft.FontWeight.NORMAL,
+                    color=_PRIMARY if is_header else ft.Colors.BLUE_GREY_800,
+                    no_wrap=True,
+                ),
+                padding=ft.padding.symmetric(horizontal=10, vertical=10),
+                bgcolor=_HEADER_BG if is_header else (
+                    ft.Colors.with_opacity(0.03, ft.Colors.BLUE) if zebra else ft.Colors.WHITE
+                ),
+                expand=True,
+                border=ft.border.only(bottom=ft.BorderSide(1, _OUTLINE)),
             )
-            for c in cols
-        ]
-        self._data_table.current.rows = [
-            ft.DataRow(
-                cells=[
-                    ft.DataCell(
-                        ft.Container(
-                            ft.Text(str(row[c])[:20], size=12),
-                            width=col_w,
-                        )
-                    )
-                    for c in cols
-                ],
-                color=ft.Colors.with_opacity(0.04, ft.Colors.BLUE) if i % 2 == 0 else None,
+
+        # linha de cabeçalho
+        header_row = ft.Row(
+            controls=[_cell(str(c), is_header=True) for c in cols],
+            spacing=0,
+            expand=True,
+        )
+
+        # linhas de dados
+        data_rows = [
+            ft.Row(
+                controls=[_cell(str(row[c]), zebra=(i % 2 == 0)) for c in cols],
+                spacing=0,
+                expand=True,
             )
             for i, (_, row) in enumerate(df.iterrows())
         ]
-        # força atualização do container da tabela também
-        if self._tabela_container.current:
-            self._tabela_container.current.update()
+
+        self._data_table.current.controls = [header_row] + data_rows
         self.page.update()
 
     def show_resultados(self, stats: dict):
